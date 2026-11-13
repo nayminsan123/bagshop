@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.db
+*.sqlite
+.env
+.env.local
+.DS_Store
+.vscode/
+.idea/
+*.log
+uploads/*
+!uploads/.gitkeep
+bagshop/node_modules/
+bagshop-api/node_modules/
+bagshop/bagshop.db
+bagshop-api/bagshop.db

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pont Pont Hand-Bag Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    [v-cloak] { display: none; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div id="app" v-cloak>
+    <!-- Login Screen -->
+    <div v-if="!isLoggedIn" class="min-h-screen flex items-center justify-center">
+      <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Pont Pont Hand-Bag Admin</h1>
+        
+        <form @submit.prevent="login">
+          <div class="mb-4">
+            <label class="block text-gray-700 mb-2">Email</label>
+            <input type="email" v-model="loginForm.email" required
+                   class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          
+          <div class="mb-6">
+            <label class="block text-gray-700 mb-2">Password</label>
+            <input type="password" v-model="loginForm.password" required
+                   class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          
+          <p v-if="loginError" class="text-red-500 text-sm mb-4">{{ loginError }}</p>
+          
+          <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
+            Login
+          </button>
+        </form>
+        
+        <p class="text-center text-gray-500 text-sm mt-4">
+          Default: admin@bagshop.com / admin123
+        </p>
+      </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div v-else class="flex min-h-screen">
+      <!-- Sidebar -->
+      <aside class="w-64 bg-gray-800 text-white fixed h-full">
+        <div class="p-6">
+          <h1 class="text-xl font-bold">Pont Pont Admin</h1>
+        </div>
+        
+        <nav class="mt-6">
+          <a v-for="item in menuItems" :key="item.id"
+             @click="currentView = item.id"
+             :class="['flex items-center px-6 py-3 cursor-pointer transition', 
+                      currentView === item.id ? 'bg-blue-600' : 'hover:bg-gray-700']">
+            <i :class="['fas', item.icon, 'w-6']"></i>
+            <span class="ml-3">{{ item.name }}</span>
+          </a>
+        </nav>
+        
+        <div class="absolute bottom-0 w-full p-4 border-t border-gray-700">
+          <button @click="logout" class="flex items-center text-gray-400 hover:text-white">
+            <i class="fas fa-sign-out-alt w-6"></i>
+            <span class="ml-3">Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="ml-64 flex-1 p-8">
+        <!-- TikTok Videos Section -->
+        <div v-if="currentView === 'tiktok'">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">TikTok Videos</h2>
+            <button @click="showTiktokModal = true; editingTiktok = null" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+              <i class="fas fa-plus mr-2"></i>Add Video
+            </button>
+          </div>
+
+          <div class="bg-white rounded-xl shadow overflow-hidden">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Order</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Title</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Video URL</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Status</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="video in tiktokVideos" :key="video.id" class="border-t">
+                  <td class="px-6 py-4">{{ video.display_order }}</td>
+                  <td class="px-6 py-4 font-medium">{{ video.title || 'No title' }}</td>
+                  <td class="px-6 py-4 text-sm text-blue-600 max-w-xs truncate">
+                    <a :href="video.video_url" target="_blank">{{ video.video_url }}</a>
+                  </td>
+                  <td class="px-6 py-4">
+                    <span :class="video.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+                          class="px-2 py-1 rounded text-xs">
+                      {{ video.is_active ? 'Active' : 'Inactive' }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <button @click="editTiktok(video)" class="text-blue-600 hover:text-blue-800 mr-3">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button @click="deleteTiktok(video.id)" class="text-red-600 hover:text-red-800">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Dashboard (existing) -->
+        <div v-if="currentView === 'dashboard'">
+          <h2 class="text-2xl font-bold text-gray-800 mb-6">Dashboard</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow p-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-gray-500 text-sm">Total Orders</p>
+                  <p class="text-3xl font-bold text-gray-800">{{ stats.orders }}</p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full">
+                  <i class="fas fa-shopping-bag text-blue-600 text-xl"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow p-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-gray-500 text-sm">Revenue</p>
+                  <p class="text-3xl font-bold text-gray-800">${{ stats.revenue?.toFixed(2) || '0.00' }}</p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full">
+                  <i class="fas fa-dollar-sign text-green-600 text-xl"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow p-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-gray-500 text-sm">Products</p>
+                  <p class="text-3xl font-bold text-gray-800">{{ stats.products }}</p>
+                </div>
+                <div class="bg-purple-100 p-3 rounded-full">
+                  <i class="fas fa-box text-purple-600 text-xl"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow p-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-gray-500 text-sm">Customers</p>
+                  <p class="text-3xl font-bold text-gray-800">{{ stats.customers }}</p>
+                </div>
+                <div class="bg-orange-100 p-3 rounded-full">
+                  <i class="fas fa-users text-orange-600 text-xl"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Products & Orders (existing views) -->
+        <div v-if="currentView === 'products'">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Products</h2>
+            <button @click="showProductModal = true; editingProduct = null" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+              <i class="fas fa-plus mr-2"></i>Add Product
+            </button>
+          </div>
+          
+          <div class="bg-white rounded-xl shadow overflow-hidden">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Product</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Category</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Price</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Stock</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="product in products" :key="product.id" class="border-t">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center">
+                      <img :src="product.images?.[0] || 'https://via.placeholder.com/40'" 
+                           class="w-10 h-10 rounded object-cover">
+                      <div class="ml-3">
+                        <p class="font-medium text-gray-800">{{ product.name }}</p>
+                        <p class="text-sm text-gray-500">{{ product.sku }}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-gray-600">{{ product.category_name }}</td>
+                  <td class="px-6 py-4">
+                    <span class="text-gray-800">${{ product.price }}</span>
+                  </td>
+                  <td class="px-6 py-4">{{ product.stock }}</td>
+                  <td class="px-6 py-4">
+                    <button @click="editProduct(product)" class="text-blue-600 hover:text-blue-800 mr-3">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button @click="deleteProduct(product.id)" class="text-red-600 hover:text-red-800">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div v-if="currentView === 'orders'">
+          <h2 class="text-2xl font-bold text-gray-800 mb-6">Orders</h2>
+          
+          <div class="bg-white rounded-xl shadow overflow-hidden">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Order ID</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Customer</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Total</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Status</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="order in orders" :key="order.id" class="border-t">
+                  <td class="px-6 py-4 font-medium">{{ order.id.substring(0, 8) }}</td>
+                  <td class="px-6 py-4">{{ order.first_name }} {{ order.last_name }}</td>
+                  <td class="px-6 py-4 font-medium">${{ order.total?.toFixed(2) }}</td>
+                  <td class="px-6 py-4">
+                    <select v-model="order.status" @change="updateOrderStatus(order)"
+                            class="border rounded px-2 py-1 text-sm">
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </td>
+                  <td class="px-6 py-4 text-gray-600">{{ formatDate(order.created_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- TikTok Video Modal -->
+    <div v-if="showTiktokModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xl font-bold">{{ editingTiktok ? 'Edit video' : 'Add TikTok Video' }}</h3>
+          <button @click="showTiktokModal = false" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <form @submit.prevent="saveTiktokVideo" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 mb-1">TikTok Video URL *</label>
+            <input type="url" v-model="tiktokForm.videoUrl" required
+                   placeholder="https://www.tiktok.com/@user/video/123456789"
+                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <p class="text-xs text-gray-500 mt-1">Example: https://www.tiktok.com/@pontpontbagshopmdy/video/7665232841726430484</p>
+          </div>
+          
+          <div>
+            <label class="block text-gray-700 mb-1">Title</label>
+            <input type="text" v-model="tiktokForm.title"
+                   placeholder="Premium Bag Collection"
+                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          
+          <div>
+            <label class="block text-gray-700 mb-1">Display Order</label>
+            <input type="number" v-model="tiktokForm.displayOrder" min="0"
+                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <input type="checkbox" v-model="tiktokForm.isActive" id="active">
+            <label for="active" class="text-gray-700">Active</label>
+          </div>
+          
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="showTiktokModal = false"
+                    class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              {{ editingTiktok ? 'Update' : 'Add' }} Video
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp } = Vue
+    
+    createApp({
+      data() {
+        return {
+          api: axios.create({ baseURL: '/api' }),
+          isLoggedIn: false,
+          token: localStorage.getItem('adminToken'),
+          currentView: 'dashboard',
+          loginForm: { email: 'admin@bagshop.com', password: 'admin123' },
+          loginError: '',
+          stats: {},
+          products: [],
+          orders: [],
+          tiktokVideos: [],
+          showTiktokModal: false,
+          editingTiktok: null,
+          tiktokForm: {
+            videoUrl: '',
+            title: '',
+            displayOrder: 0,
+            isActive: true
+          },
+          menuItems: [
+            { id: 'dashboard', name: 'Dashboard', icon: 'fa-tachometer-alt' },
+            { id: 'tiktok', name: 'TikTok Videos', icon: 'fa-video' },
+            { id: 'products', name: 'Products', icon: 'fa-box' },
+            { id: 'orders', name: 'Orders', icon: 'fa-shopping-cart' }
+          ]
+        }
+      },
+      created() {
+        if (this.token) {
+          this.api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+          this.isLoggedIn = true
+          this.loadDashboard()
+        }
+      },
+      methods: {
+        async login() {
+          try {
+            const { data } = await this.api.post('/auth/login', this.loginForm)
+            if (data.success && data.user.role === 'admin') {
+              this.token = data.token
+              localStorage.setItem('adminToken', data.token)
+              this.api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+              this.isLoggedIn = true
+              this.loadDashboard()
+            } else {
+              this.loginError = 'Access denied. Admin only.'
+            }
+          } catch (err) {
+            this.loginError = err.response?.data?.message || 'Login failed'
+          }
+        },
+        logout() {
+          localStorage.removeItem('adminToken')
+          this.isLoggedIn = false
+          this.token = null
+        },
+        async loadDashboard() {
+          const { data } = await this.api.get('/admin/dashboard')
+          if (data.success) this.stats = data.data
+          
+          const [productsRes, ordersRes, tiktokRes] = await Promise.all([
+            this.api.get('/products?limit=100'),
+            this.api.get('/orders'),
+            this.api.get('/tiktok')
+          ])
+          
+          this.products = productsRes.data.data
+          this.orders = ordersRes.data.data
+          this.tiktokVideos = tiktokRes.data.data
+        },
+        editTiktok(video) {
+          this.editingTiktok = video
+          this.tiktokForm = {
+            videoUrl: video.video_url,
+            title: video.title || '',
+            displayOrder: video.display_order || 0,
+            isActive: video.is_active === 1
+          }
+          this.showTiktokModal = true
+        },
+        async saveTiktokVideo() {
+          try {
+            if (this.editingTiktok) {
+              await this.api.put(`/tiktok/${this.editingTiktok.id}`, {
+                videoUrl: this.tiktokForm.videoUrl,
+                title: this.tiktokForm.title,
+                displayOrder: this.tiktokForm.displayOrder,
+                isActive: this.tiktokForm.isActive
+              })
+            } else {
+              await this.api.post('/tiktok', {
+                videoUrl: this.tiktokForm.videoUrl,
+                title: this.tiktokForm.title,
+                displayOrder: this.tiktokForm.displayOrder
+              })
+            }
+            
+            this.showTiktokModal = false
+            this.loadDashboard()
+          } catch (error) {
+            alert(error.response?.data?.message || 'Error saving video')
+          }
+        },
+        async deleteTiktok(id) {
+          if (confirm('Delete this video?')) {
+            await this.api.delete(`/tiktok/${id}`)
+            this.loadDashboard()
+          }
+        },
+        async updateOrderStatus(order) {
+          await this.api.put(`/orders/${order.id}/status`, { status: order.status })
+        },
+        formatDate(date) {
+          return new Date(date).toLocaleDateString()
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>
